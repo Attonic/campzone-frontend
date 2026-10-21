@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Alert, Button, Input } from '../../../components'
-import { interpretarErroApi } from '../erros'
+import { focarPrimeiroInvalido, interpretarErroApi } from '../erros'
 import { useCadastro } from '../hooks/useCadastro'
 import type { CadastrarOrganizacaoRequest } from '../types'
 import { validarCadastro, type Erros } from '../validation'
@@ -28,7 +28,10 @@ export function CadastroForm() {
     }
     const erros = validarCadastro(request)
     setErrosUx(erros)
-    if (Object.keys(erros).length > 0) return
+    if (Object.keys(erros).length > 0) {
+      focarPrimeiroInvalido(evento.currentTarget, CAMPOS, erros)
+      return
+    }
     cadastro.mutate(request)
   }
 
@@ -39,6 +42,8 @@ export function CadastroForm() {
       {erroApi.geral && <Alert>{erroApi.geral}</Alert>}
       <Input
         label="Nome da organização"
+        name="nomeOrganizacao"
+        required
         autoComplete="organization"
         value={valores.nomeOrganizacao}
         onChange={(e) => setValores({ ...valores, nomeOrganizacao: e.target.value })}
@@ -46,6 +51,8 @@ export function CadastroForm() {
       />
       <Input
         label="Seu nome"
+        name="nome"
+        required
         autoComplete="name"
         value={valores.nome}
         onChange={(e) => setValores({ ...valores, nome: e.target.value })}
@@ -53,6 +60,8 @@ export function CadastroForm() {
       />
       <Input
         label="E-mail"
+        name="email"
+        required
         type="email"
         autoComplete="email"
         value={valores.email}
@@ -61,6 +70,8 @@ export function CadastroForm() {
       />
       <Input
         label="Senha"
+        name="senha"
+        required
         type="password"
         autoComplete="new-password"
         value={valores.senha}

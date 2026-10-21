@@ -16,3 +16,18 @@ export function interpretarErroApi(erro: unknown, camposDoFormulario: readonly s
   const geral = [mensagemDoErro(erro), ...orfaos.map((e) => e.mensagem)].join(' ')
   return { geral, campos }
 }
+
+/**
+ * Leva o foco ao primeiro campo (na ordem do formulário) que tem erro, para quem
+ * navega por teclado ou leitor de tela. Os inputs são achados pelo atributo `name`.
+ */
+export function focarPrimeiroInvalido(
+  formulario: HTMLFormElement,
+  ordem: readonly string[],
+  erros: Record<string, string | undefined>,
+): void {
+  const primeiro = ordem.find((campo) => erros[campo])
+  if (!primeiro) return
+  const elemento = formulario.elements.namedItem(primeiro)
+  if (elemento instanceof HTMLElement) elemento.focus()
+}

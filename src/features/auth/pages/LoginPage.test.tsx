@@ -87,6 +87,28 @@ describe('LoginPage', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('depois de um envio inválido, o foco vai para o primeiro campo inválido', async () => {
+    instalarApiFake({})
+    renderApp('/login')
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('Senha'), '123')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(screen.getByLabelText('E-mail')).toHaveFocus()
+
+    await user.type(screen.getByLabelText('E-mail'), 'a@b.com')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(screen.getByLabelText('Senha')).toHaveFocus()
+  })
+
+  it('marca os campos como obrigatórios para leitores de tela', () => {
+    instalarApiFake({})
+    renderApp('/login')
+
+    expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText('Senha')).toHaveAttribute('aria-required', 'true')
+  })
+
   it('campos vazios mostram obrigatoriedade', async () => {
     const fetchMock = instalarApiFake({})
     renderApp('/login')

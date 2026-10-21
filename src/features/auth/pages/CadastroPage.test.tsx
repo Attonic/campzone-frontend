@@ -90,4 +90,13 @@ describe('CadastroPage', () => {
     expect(screen.getByText('A senha deve ter no mínimo 8 caracteres.')).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('depois de um envio inválido, o foco vai para o primeiro campo inválido', async () => {
+    instalarApiFake({})
+    renderApp('/cadastro')
+
+    await preencher({ 'Seu nome': 'M', Senha: 'curta' })
+
+    expect(screen.getByLabelText('Seu nome')).toHaveFocus()
+  })
 })

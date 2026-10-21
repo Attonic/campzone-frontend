@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Alert, Button, Input } from '../../../components'
-import { interpretarErroApi } from '../erros'
+import { focarPrimeiroInvalido, interpretarErroApi } from '../erros'
 import { useLogin } from '../hooks/useLogin'
 import type { LoginRequest } from '../types'
 import { validarLogin, type Erros } from '../validation'
@@ -18,7 +18,10 @@ export function LoginForm() {
     const request = { ...valores, email: valores.email.trim() }
     const erros = validarLogin(request)
     setErrosUx(erros)
-    if (Object.keys(erros).length > 0) return
+    if (Object.keys(erros).length > 0) {
+      focarPrimeiroInvalido(evento.currentTarget, CAMPOS, erros)
+      return
+    }
     login.mutate(request)
   }
 
@@ -27,6 +30,8 @@ export function LoginForm() {
       {erroApi.geral && <Alert>{erroApi.geral}</Alert>}
       <Input
         label="E-mail"
+        name="email"
+        required
         type="email"
         autoComplete="email"
         value={valores.email}
@@ -35,6 +40,8 @@ export function LoginForm() {
       />
       <Input
         label="Senha"
+        name="senha"
+        required
         type="password"
         autoComplete="current-password"
         value={valores.senha}
