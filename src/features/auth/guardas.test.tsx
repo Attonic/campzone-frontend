@@ -1,9 +1,10 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { admin, autenticacao, organizador } from '../../test/fixtures'
 import { chamadasA, instalarApiFake, ok, problema } from '../../test/fakeApi'
 import { renderApp } from '../../test/renderApp'
+import { salvarSessao } from './session'
 import type { UsuarioResponse } from './types'
 
 function semearSessao(usuario: UsuarioResponse, expiraEm = autenticacao(usuario).expiraEm) {
@@ -122,5 +123,110 @@ describe('sessão', () => {
     const link = await screen.findByRole('link', { name: 'Ir para o painel' })
     await waitFor(() => expect(link).toHaveAttribute('href', '/admin'))
     expect(screen.queryByRole('link', { name: 'Entrar' })).not.toBeInTheDocument()
+  })
+
+  describe('cache ao trocar a sessão', () => {
+    const outraOrganizadora: UsuarioResponse = {
+      ...organizador,
+      id: 3,
+      nome: 'Joana da Outra Liga',
+      organizacaoId: 11,
+      organizacaoNome: 'Outra Liga',
+    }
+    const ME = ['auth', 'me']
+    const novaSessao = (token: string) => ({ token, expiraEm: autenticacao(organizador).expiraEm })
+
+    it('novo token via salvarSessao limpa o cache e busca /auth/me de novo', async () => {
+      let resposta = ok(organizador)
+      const fetchMock = instalarApiFake({ 'GET /auth/me': () => resposta })
+      semearSessao(organizador)
+      const { queryClient } = renderApp('/app')
+      await screen.findByText('Maria Organizadora')
+      queryClient.setQueryData(['campeonatos'], ['da-org-A'])
+
+      resposta = ok(outraOrganizadora)
+      act(() => {
+        salvarSessao(novaSessao('jwt-B'))
+        expect(queryClient.getQueryData(ME)).toBeUndefined()
+        expect(queryClient.getQueryData(['campeonatos'])).toBeUndefined()
+      })
+
+      expect(await screen.findByText('Joana da Outra Liga')).toBeInTheDocument()
+      expect(screen.getByText('Outra Liga')).toBeInTheDocument()
+      expect(chamadasA(fetchMock, 'GET /auth/me')).toHaveLength(2)
+      const [, init] = chamadasA(fetchMock, 'GET /auth/me')[1]
+      expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer jwt-B')
+    })
+
+    it('outra aba entrando com outro usuário (StorageEvent) limpa o cache', async () => {
+      let resposta = ok(organizador)
+      const fetchMock = instalarApiFake({ 'GET /auth/me': () => resposta })
+      semearSessao(organizador)
+      const { queryClient } = renderApp('/app')
+      await screen.findByText('Maria Organizadora')
+      queryClient.setQueryData(['campeonatos'], ['da-org-A'])
+
+      resposta = ok(outraOrganizadora)
+      act(() => {
+        localStorage.setItem('campzone.sessao', JSON.stringify(novaSessao('jwt-B')))
+        window.dispatchEvent(new StorageEvent('storage', { key: 'campzone.sessao' }))
+        expect(queryClient.getQueryData(['campeonatos'])).toBeUndefined()
+      })
+
+      expect(await screen.findByText('Joana da Outra Liga')).toBeInTheDocument()
+      expect(chamadasA(fetchMock, 'GET /auth/me')).toHaveLength(2)
+    })
+
+    it('outra aba saindo (StorageEvent) limpa o cache e leva ao login', async () => {
+      instalarApiFake({ 'GET /auth/me': ok(organizador) })
+      semearSessao(organizador)
+      const { router, queryClient } = renderApp('/app')
+      await screen.findByText('Maria Organizadora')
+
+      act(() => {
+        localStorage.removeItem('campzone.sessao')
+        window.dispatchEvent(new StorageEvent('storage', { key: 'campzone.sessao' }))
+      })
+
+      await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
+      expect(queryClient.getQueryData(ME)).toBeUndefined()
+    })
+
+    it('token vencido descartado ao usar a API limpa o cache', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      let resposta = ok(organizador)
+      instalarApiFake({ 'GET /auth/me': () => resposta })
+      semearSessao(organizador)
+      const { router, queryClient } = renderApp('/app')
+      await screen.findByText('Maria Organizadora')
+      queryClient.setQueryData(['campeonatos'], ['da-org-A'])
+
+      vi.setSystemTime(Date.now() + 2 * 60 * 60 * 1000)
+      resposta = problema(401, 'Token inválido ou expirado.')
+      await act(() => queryClient.refetchQueries({ queryKey: ME }).catch(() => {}))
+
+      await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
+      expect(localStorage.getItem('campzone.sessao')).toBeNull()
+      expect(queryClient.getQueryData(['campeonatos'])).toBeUndefined()
+      expect(queryClient.getQueryData(ME)).toBeUndefined()
+    })
+
+    it('novo login no mesmo navegador não herda o cache anterior', async () => {
+      instalarApiFake({
+        'POST /public/auth/login': ok(autenticacao(outraOrganizadora, 'jwt-B')),
+        'GET /auth/me': ok(outraOrganizadora),
+      })
+      const { queryClient } = renderApp('/login')
+      queryClient.setQueryData(['campeonatos'], ['sobra-da-org-A'])
+
+      const user = userEvent.setup()
+      await user.type(screen.getByLabelText('E-mail'), 'joana@outra.com')
+      await user.type(screen.getByLabelText('Senha'), 'senha12345')
+      await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+      expect(await screen.findByText('Joana da Outra Liga')).toBeInTheDocument()
+      expect(queryClient.getQueryData(['campeonatos'])).toBeUndefined()
+      expect(queryClient.getQueryData(ME)).toEqual(outraOrganizadora)
+    })
   })
 })
