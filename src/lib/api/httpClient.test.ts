@@ -87,4 +87,32 @@ describe('httpClient', () => {
       expect.objectContaining({ method: 'POST', body: '{"a":1}' }),
     )
   })
+
+  it('trata 2xx sem corpo (201 vazio) como undefined', async () => {
+    mockFetch(new Response('', { status: 201 }))
+
+    await expect(http.post('/x', { a: 1 })).resolves.toBeUndefined()
+  })
+
+  it('converte 2xx com conteúdo não-JSON em ApiError claro', async () => {
+    mockFetch(
+      new Response('<html>ok</html>', { status: 200, headers: { 'Content-Type': 'text/html' } }),
+    )
+
+    const error = await http.get('/x').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).problem).toMatchObject({
+      status: 200,
+      title: 'Resposta inesperada do servidor.',
+    })
+  })
+
+  it('converte 2xx com JSON malformado em ApiError', async () => {
+    mockFetch(
+      new Response('{quebrado', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    )
+
+    await expect(http.get('/x')).rejects.toBeInstanceOf(ApiError)
+  })
 })

@@ -42,6 +42,25 @@ async function toApiError(response: Response): Promise<ApiError> {
   )
 }
 
+function respostaInesperada(status: number): ApiError {
+  return new ApiError(problemFallback(status, 'Resposta inesperada do servidor.'))
+}
+
+/** Sem corpo (204, 201 vazio...) devolve `undefined`; corpo que não seja JSON válido vira `ApiError`. */
+async function parseSuccessBody<T>(response: Response): Promise<T> {
+  const text = await response.text()
+  if (text.trim() === '') return undefined as T
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.includes('json')) throw respostaInesperada(response.status)
+
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw respostaInesperada(response.status)
+  }
+}
+
 /**
  * Cliente HTTP base. Único lugar do front que usa `fetch`.
  * Respostas de erro viram `ApiError` com um `ProblemDetail` tipado.
@@ -70,9 +89,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (!response.ok) throw await toApiError(response)
-  if (response.status === 204) return undefined as T
-
-  return (await response.json()) as T
+  return parseSuccessBody<T>(response)
 }
 
 export const http = {
