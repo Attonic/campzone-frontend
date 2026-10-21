@@ -52,7 +52,7 @@ async function toApiError(response: Response): Promise<ApiError> {
     try {
       const body: unknown = await response.json()
       if (isProblemDetail(body)) {
-        return new ApiError({ ...body, type: body.type ?? 'about:blank' })
+        return new ApiError(body)
       }
     } catch {
       // corpo inválido: cai no fallback abaixo

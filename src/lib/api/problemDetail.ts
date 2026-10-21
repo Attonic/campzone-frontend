@@ -6,7 +6,8 @@ export interface ErroCampo {
 
 /** ProblemDetail (RFC 9457) como o backend devolve em `application/problem+json`. */
 export interface ProblemDetail {
-  type: string
+  /** O backend real costuma omitir; quando ausente, vale `about:blank` (RFC 9457). */
+  type?: string
   title: string
   status: number
   detail?: string
