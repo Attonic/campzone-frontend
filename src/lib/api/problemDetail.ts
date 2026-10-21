@@ -33,3 +33,14 @@ export function mensagemDoErro(error: unknown): string {
   }
   return 'Não foi possível concluir a operação. Tente novamente.'
 }
+
+/** Erros de validação do backend indexados por `campo` (primeira mensagem de cada campo). */
+export function errosPorCampo(error: unknown): Record<string, string> {
+  const resultado: Record<string, string> = {}
+  if (error instanceof ApiError) {
+    for (const { campo, mensagem } of error.problem.erros ?? []) {
+      if (!(campo in resultado)) resultado[campo] = mensagem
+    }
+  }
+  return resultado
+}

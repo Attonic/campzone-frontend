@@ -1,2 +1,9 @@
-export { http, request, getBaseUrl, type RequestOptions } from './httpClient'
-export { ApiError, mensagemDoErro, type ErroCampo, type ProblemDetail } from './problemDetail'
+export {
+  http,
+  request,
+  getBaseUrl,
+  configurarAutenticacao,
+  type ConfiguracaoAutenticacao,
+  type RequestOptions,
+} from './httpClient'
+export { ApiError, errosPorCampo, mensagemDoErro, type ErroCampo, type ProblemDetail } from './problemDetail'

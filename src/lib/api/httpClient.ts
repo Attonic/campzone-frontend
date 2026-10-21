@@ -15,6 +15,27 @@ export interface RequestOptions {
   signal?: AbortSignal
 }
 
+/**
+ * Ponto de injeção da autenticação. O `lib/api` não conhece `features/`:
+ * quem usa o cliente registra aqui de onde vem o token e o que fazer num 401.
+ */
+export interface ConfiguracaoAutenticacao {
+  obterToken: () => string | null
+  /** Chamado quando uma rota autenticada (que enviou token) responde 401. */
+  aoNaoAutorizado: () => void
+}
+
+let autenticacao: ConfiguracaoAutenticacao | null = null
+
+export function configurarAutenticacao(configuracao: ConfiguracaoAutenticacao | null): void {
+  autenticacao = configuracao
+}
+
+/** Rotas públicas ignoram o `Authorization` no backend: nem enviamos o token. */
+function rotaPublica(path: string): boolean {
+  return path.startsWith('/public/')
+}
+
 function problemFallback(status: number, title: string): ProblemDetail {
   return { type: 'about:blank', title, status }
 }
@@ -68,6 +89,7 @@ async function parseSuccessBody<T>(response: Response): Promise<T> {
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, headers = {}, signal } = options
   const hasBody = body !== undefined
+  const token = rotaPublica(path) ? null : (autenticacao?.obterToken() ?? null)
 
   let response: Response
   try {
@@ -76,6 +98,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       headers: {
         Accept: 'application/json, application/problem+json',
         ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },
       body: hasBody ? JSON.stringify(body) : undefined,
@@ -88,7 +111,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     )
   }
 
-  if (!response.ok) throw await toApiError(response)
+  if (!response.ok) {
+    const erro = await toApiError(response)
+    // Só trata como sessão inválida se o token enviado ainda é o da sessão atual
+    // (evita que a resposta atrasada de uma sessão antiga derrube a nova).
+    if (response.status === 401 && token && autenticacao?.obterToken() === token) {
+      autenticacao.aoNaoAutorizado()
+    }
+    throw erro
+  }
   return parseSuccessBody<T>(response)
 }
 
