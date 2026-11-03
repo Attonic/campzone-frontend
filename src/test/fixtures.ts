@@ -1,6 +1,7 @@
 import type { OrganizacaoAdminResponse, ResumoPlataformaResponse } from '../features/admin/types'
 import type { AutenticacaoResponse, UsuarioResponse } from '../features/auth/types'
 import type { PaginaResponse } from '../lib/api'
+import { ok, type RotasFake } from './fakeApi'
 
 export const organizador: UsuarioResponse = {
   id: 2,
@@ -67,9 +68,28 @@ export const ligaDoBairro: OrganizacaoAdminResponse = {
   criadoEm: '2026-10-21T15:00:00.000000Z',
 }
 
+export const xadrezClube: OrganizacaoAdminResponse = {
+  id: 1,
+  nome: 'Xadrez Clube',
+  planoCodigo: 'GRATIS',
+  planoNome: 'Grátis',
+  totalUsuarios: 1,
+  totalCampeonatos: 0,
+  campeonatosAtivos: 0,
+  criadoEm: '2026-09-02T09:15:00.000000Z',
+}
+
 export function paginaDe<T>(
   itens: T[],
   { pagina = 0, tamanho = 20, totalItens = itens.length, totalPaginas = Math.ceil(totalItens / tamanho) } = {},
 ): PaginaResponse<T> {
   return { itens, pagina, tamanho, totalItens, totalPaginas }
+}
+
+/** Rotas do painel admin com dados de exemplo, para testes que só passam por `/admin`. */
+export function rotasAdmin(): RotasFake {
+  return {
+    'GET /admin/resumo': ok(resumoPlataforma),
+    'GET /admin/organizacoes': ok(paginaDe([copaSociety, ligaDoBairro])),
+  }
 }

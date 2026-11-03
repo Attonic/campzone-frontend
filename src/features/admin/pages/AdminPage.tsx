@@ -1,7 +1,13 @@
+import { OrganizacoesSecao } from '../components/OrganizacoesSecao'
+import { ResumoCards } from '../components/ResumoCards'
+
+/** `/admin`: visão geral da plataforma (só leitura, ADR 0002). */
 export function AdminPage() {
   return (
-    <section className="rounded-2xl border border-dashed border-slate-700 px-6 py-12 text-center">
-      <h1 className="text-xl font-semibold">Painel da plataforma em construção.</h1>
-    </section>
+    <div className="flex flex-col gap-8">
+      <h1 className="text-2xl font-semibold">Visão geral da plataforma</h1>
+      <ResumoCards />
+      <OrganizacoesSecao />
+    </div>
   )
 }
