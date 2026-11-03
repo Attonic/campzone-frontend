@@ -54,7 +54,7 @@ export function chamadasA(fetchMock: ReturnType<typeof instalarApiFake>, chave: 
 }
 
 /** Query string de uma chamada registrada pelo mock. */
-export function queryDe(chamada: [string, RequestInit | undefined]): URLSearchParams {
+export function queryDe(chamada: readonly [string, RequestInit?]): URLSearchParams {
   const [url] = chamada
   return new URLSearchParams(url.split('?')[1] ?? '')
 }
