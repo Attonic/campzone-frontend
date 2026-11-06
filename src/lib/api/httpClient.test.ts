@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, http } from '.'
+import { ApiError, configurarAutenticacao, http } from '.'
 
 function mockFetch(response: Response) {
   const fetchMock = vi.fn().mockResolvedValue(response)
@@ -16,7 +16,16 @@ function problemResponse(body: unknown, status: number) {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  configurarAutenticacao(null)
 })
+
+function jsonOk() {
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
+
+function headersEnviados(fetchMock: ReturnType<typeof mockFetch>, chamada = 0) {
+  return (fetchMock.mock.calls[chamada][1] as RequestInit).headers as Record<string, string>
+}
 
 describe('httpClient', () => {
   it('devolve o JSON em respostas de sucesso, usando o baseURL padrão', async () => {
@@ -114,5 +123,52 @@ describe('httpClient', () => {
     )
 
     await expect(http.get('/x')).rejects.toBeInstanceOf(ApiError)
+  })
+
+  describe('autenticação', () => {
+    it('envia Authorization: Bearer quando há token', async () => {
+      const fetchMock = mockFetch(jsonOk())
+      configurarAutenticacao({ obterToken: () => 'abc', aoNaoAutorizado: vi.fn() })
+
+      await http.get('/auth/me')
+
+      expect(headersEnviados(fetchMock).Authorization).toBe('Bearer abc')
+    })
+
+    it('não envia Authorization quando não há token', async () => {
+      const fetchMock = mockFetch(jsonOk())
+      configurarAutenticacao({ obterToken: () => null, aoNaoAutorizado: vi.fn() })
+
+      await http.get('/auth/me')
+
+      expect(headersEnviados(fetchMock)).not.toHaveProperty('Authorization')
+    })
+
+    it('não envia Authorization em rotas públicas', async () => {
+      const fetchMock = mockFetch(jsonOk())
+      configurarAutenticacao({ obterToken: () => 'abc', aoNaoAutorizado: vi.fn() })
+
+      await http.post('/public/auth/login', {})
+
+      expect(headersEnviados(fetchMock)).not.toHaveProperty('Authorization')
+    })
+
+    it('avisa a sessão quando rota autenticada responde 401, e ainda lança ApiError', async () => {
+      mockFetch(problemResponse({ type: 'about:blank', title: 'Unauthorized', status: 401 }, 401))
+      const aoNaoAutorizado = vi.fn()
+      configurarAutenticacao({ obterToken: () => 'abc', aoNaoAutorizado })
+
+      await expect(http.get('/auth/me')).rejects.toBeInstanceOf(ApiError)
+      expect(aoNaoAutorizado).toHaveBeenCalledOnce()
+    })
+
+    it('não avisa a sessão no 401 de rota pública (login com senha errada)', async () => {
+      mockFetch(problemResponse({ type: 'about:blank', title: 'Unauthorized', status: 401 }, 401))
+      const aoNaoAutorizado = vi.fn()
+      configurarAutenticacao({ obterToken: () => 'abc', aoNaoAutorizado })
+
+      await expect(http.post('/public/auth/login', {})).rejects.toBeInstanceOf(ApiError)
+      expect(aoNaoAutorizado).not.toHaveBeenCalled()
+    })
   })
 })

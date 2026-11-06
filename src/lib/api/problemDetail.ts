@@ -6,7 +6,8 @@ export interface ErroCampo {
 
 /** ProblemDetail (RFC 9457) como o backend devolve em `application/problem+json`. */
 export interface ProblemDetail {
-  type: string
+  /** O backend real costuma omitir; quando ausente, vale `about:blank` (RFC 9457). */
+  type?: string
   title: string
   status: number
   detail?: string
@@ -32,4 +33,15 @@ export function mensagemDoErro(error: unknown): string {
     return error.problem.detail ?? error.problem.title
   }
   return 'Não foi possível concluir a operação. Tente novamente.'
+}
+
+/** Erros de validação do backend indexados por `campo` (primeira mensagem de cada campo). */
+export function errosPorCampo(error: unknown): Record<string, string> {
+  const resultado: Record<string, string> = {}
+  if (error instanceof ApiError) {
+    for (const { campo, mensagem } of error.problem.erros ?? []) {
+      if (!(campo in resultado)) resultado[campo] = mensagem
+    }
+  }
+  return resultado
 }
