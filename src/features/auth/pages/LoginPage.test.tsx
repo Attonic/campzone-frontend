@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { admin, autenticacao, organizador } from '../../../test/fixtures'
+import { admin, autenticacao, organizador, rotasAdmin } from '../../../test/fixtures'
 import { chamadasA, instalarApiFake, ok, problema } from '../../../test/fakeApi'
 import { renderApp } from '../../../test/renderApp'
 
@@ -34,12 +34,13 @@ describe('LoginPage', () => {
     instalarApiFake({
       'POST /public/auth/login': ok(autenticacao(admin)),
       'GET /auth/me': ok(admin),
+      ...rotasAdmin(),
     })
     const { router } = renderApp('/login')
 
     await preencherEEnviar('admin@campzone.dev', 'admin12345')
 
-    expect(await screen.findByText('Painel da plataforma em construção.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Visão geral da plataforma' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/admin')
     expect(screen.getByText('Admin da plataforma')).toBeInTheDocument()
   })
@@ -146,7 +147,7 @@ describe('LoginPage', () => {
   })
 
   it('já logado, /login redireciona pelo papel', async () => {
-    instalarApiFake({ 'GET /auth/me': ok(admin) })
+    instalarApiFake({ 'GET /auth/me': ok(admin), ...rotasAdmin() })
     localStorage.setItem(
       'campzone.sessao',
       JSON.stringify({ token: 'jwt', expiraEm: autenticacao(admin).expiraEm }),

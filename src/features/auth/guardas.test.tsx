@@ -1,7 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { admin, autenticacao, organizador } from '../../test/fixtures'
+import { admin, autenticacao, organizador, rotasAdmin } from '../../test/fixtures'
 import { chamadasA, instalarApiFake, ok, problema } from '../../test/fakeApi'
 import { renderApp } from '../../test/renderApp'
 import { salvarSessao } from './session'
@@ -37,11 +37,11 @@ describe('guardas de rota', () => {
   })
 
   it('admin em /app vai para /admin', async () => {
-    instalarApiFake({ 'GET /auth/me': ok(admin) })
+    instalarApiFake({ 'GET /auth/me': ok(admin), ...rotasAdmin() })
     semearSessao(admin)
     const { router } = renderApp('/app')
 
-    expect(await screen.findByText('Painel da plataforma em construção.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Visão geral da plataforma' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/admin')
   })
 

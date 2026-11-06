@@ -1,3 +1,5 @@
 export { Alert } from './Alert'
 export { Button } from './Button'
+export { ErroAoCarregar } from './ErroAoCarregar'
 export { Input } from './Input'
+export { Paginacao } from './Paginacao'
