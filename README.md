@@ -1,5 +1,7 @@
 # CampZone: Frontend
 
+> Parte do CampZone, desenvolvido por agentes de IA com revisão independente a cada tarefa. O processo, as specs e as decisões de arquitetura estão em [Attonic/campzone](https://github.com/Attonic/campzone).
+
 Interface web do CampZone (React + TypeScript + Vite). O backend fica no repositório `campzone-backend`.
 
 ## Pré-requisitos (Fedora)
